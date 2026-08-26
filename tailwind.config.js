@@ -13,6 +13,15 @@ export default {
           ink: '#000000',   // letras
           gold: '#b08d3e',  // dorado litúrgico (acento)
         },
+        liturgico: {
+          verde: '#014034',
+          rojo: '#590212',
+          blanco: '#ffffff',
+          azul: '#4ab3c2',
+          morado: '#4a0088',
+          negro: '#000000',
+          rosa: '#c24977',
+        },
       },
       fontFamily: {
         misal: ['Georgia', '"Times New Roman"', 'serif'],

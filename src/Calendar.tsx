@@ -23,18 +23,31 @@ const MONTH_NAMES = [
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
-// Mapea el nombre del color litúrgico a clases de Tailwind para el punto de color.
+// Mapea el nombre del color litúrgico a clases de Tailwind para la barra de acento.
 const COLOR_DOTS: Record<string, string> = {
-  verde: 'bg-green-600',
-  rojo: 'bg-misal-red',
-  morado: 'bg-purple-700',
-  blanco: 'bg-white border border-slate-300',
-  negro: 'bg-slate-900',
-  rosa: 'bg-pink-500',
-  azul: 'bg-blue-600',
+  verde: 'bg-liturgico-verde',
+  rojo: 'bg-liturgico-rojo',
+  morado: 'bg-liturgico-morado',
+  blanco: 'bg-liturgico-blanco border border-slate-300',
+  negro: 'bg-liturgico-negro',
+  rosa: 'bg-liturgico-rosa',
+  azul: 'bg-liturgico-azul',
 }
 
-const DEFAULT_DOT = 'bg-green-600'
+const DEFAULT_DOT = 'bg-liturgico-verde'
+
+// Estilos por tiempo litúrgico: fondo de la celda (sólido), color de texto y
+// muestra para la leyenda. Solo se usan colores litúrgicos; los tiempos que
+// comparten color (Adviento/Cuaresma en morado y Navidad/Pascua en blanco) se
+// diferencian con un borde.
+const SEASON_STYLES: Record<string, { bg: string; text: string; border: string; swatch: string }> = {
+  Adviento: { bg: 'bg-liturgico-morado', text: 'text-white', border: 'border-purple-900', swatch: 'bg-liturgico-morado' },
+  Navidad: { bg: 'bg-liturgico-blanco', text: 'text-misal-ink', border: 'border-amber-400', swatch: 'bg-liturgico-blanco border-2 border-amber-400' },
+  'Tiempo Ordinario': { bg: 'bg-liturgico-verde', text: 'text-white', border: 'border-green-900', swatch: 'bg-liturgico-verde' },
+  Cuaresma: { bg: 'bg-liturgico-morado', text: 'text-white', border: 'border-purple-300', swatch: 'bg-liturgico-morado border-2 border-purple-300' },
+  'Triduo Pascual': { bg: 'bg-liturgico-rojo', text: 'text-white', border: 'border-red-900', swatch: 'bg-liturgico-rojo' },
+  Pascua: { bg: 'bg-liturgico-blanco', text: 'text-misal-ink', border: 'border-sky-300', swatch: 'bg-liturgico-blanco border-2 border-sky-300' },
+}
 
 // Agrupa las entradas por año y mes (usando el número de mes de la carpeta).
 function groupByMonth(entries: MisalEntry[]): Map<string, MisalEntry[]> {
@@ -65,6 +78,64 @@ function dayOfWeek(date: string): number {
 // Devuelve el número de días de un mes (año, mes 1-12).
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate()
+}
+
+// Fecha de Pascua (Domingo de Resurrección) para un año, usando el algoritmo
+// de Meeus/Jones/Butcher (válido para el calendario gregoriano).
+function easterDate(year: number): Date {
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31)
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(year, month - 1, day)
+}
+
+// Devuelve el nombre del tiempo litúrgico para una fecha dada.
+function liturgicalSeason(date: Date): string {
+  const y = date.getFullYear()
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+
+  // Navidad: 25 dic - 6 ene (hasta la Epifanía).
+  if ((month === 12 && day >= 25) || (month === 1 && day <= 6)) return 'Navidad'
+
+  // Adviento: 4 domingos antes de Navidad hasta el 24 de diciembre.
+  const christmas = new Date(y, 11, 25)
+  const adventStart = new Date(christmas)
+  adventStart.setDate(adventStart.getDate() - 21 - ((adventStart.getDay() + 6) % 7))
+  if (date >= adventStart && date <= new Date(y, 11, 24)) return 'Adviento'
+
+  // Cuaresma: Miércoles de Ceniza (46 días antes de Pascua) hasta el sábado
+  // anterior al Domingo de Ramos.
+  const easter = easterDate(y)
+  const ashWednesday = new Date(easter)
+  ashWednesday.setDate(ashWednesday.getDate() - 46)
+  const palmSunday = new Date(easter)
+  palmSunday.setDate(palmSunday.getDate() - 7)
+  if (date >= ashWednesday && date < palmSunday) return 'Cuaresma'
+
+  // Triduo Pascual: Jueves Santo, Viernes Santo, Sábado Santo y Domingo de Pascua.
+  const holyThursday = new Date(easter)
+  holyThursday.setDate(holyThursday.getDate() - 3)
+  if (date >= holyThursday && date <= easter) return 'Triduo Pascual'
+
+  // Pascua: desde el Domingo de Resurrección hasta Pentecostés (50 días después).
+  const pentecost = new Date(easter)
+  pentecost.setDate(pentecost.getDate() + 49)
+  if (date >= easter && date <= pentecost) return 'Pascua'
+
+  // Tiempo Ordinario: el resto.
+  return 'Tiempo Ordinario'
 }
 
 export default function Calendar({ entries, onNavigate }: CalendarProps) {
@@ -168,7 +239,9 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
                 {Array.from({ length: totalDays }).map((_, i) => {
                   const day = i + 1
                   const entry = byDay.get(day)
-                  const dot = entry?.color
+                  const season = liturgicalSeason(new Date(year, month - 1, day))
+                  const seasonStyle = SEASON_STYLES[season] ?? SEASON_STYLES['Tiempo Ordinario']
+                  const accent = entry?.color
                     ? COLOR_DOTS[entry.color.toLowerCase()] ?? DEFAULT_DOT
                     : undefined
                   return (
@@ -177,12 +250,11 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
                       type="button"
                       onClick={() => entry && onNavigate(entry.url)}
                       disabled={!entry}
-                      className={`aspect-square rounded-lg border border-[#e4ddcf] text-misal-ink transition hover:bg-misal-red hover:text-white disabled:opacity-40 disabled:cursor-default ${
-                        entry ? 'bg-misal-cream' : 'bg-transparent'
-                      }`}
+                      title={season}
+                      className={`flex aspect-square flex-col items-center justify-between rounded-lg border-2 p-1 transition hover:bg-misal-red hover:text-white disabled:opacity-60 disabled:cursor-default ${seasonStyle.bg} ${seasonStyle.text} ${seasonStyle.border}`}
                     >
-                      <span className="block text-center text-lg font-semibold">{day}</span>
-                      {dot && <span className={`mx-auto block h-1.5 w-1.5 rounded-full ${dot}`} />}
+                      <span className="flex flex-1 items-center text-lg font-semibold">{day}</span>
+                      {accent && <span className={`block h-1.5 w-full rounded ${accent}`} />}
                     </button>
                   )
                 })}
@@ -190,6 +262,24 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
             </section>
           )
         })}
+      </div>
+
+      {/* Leyenda de tiempos litúrgicos, al final de la página */}
+      <div className="lg:col-span-2 mt-10 border-t border-[#e4ddcf] pt-6">
+        <h3 className="text-lg font-bold tracking-[0.1em] uppercase text-misal-red mb-4">
+          Tiempos Litúrgicos
+        </h3>
+        <div className="flex flex-wrap gap-3">
+          {Object.entries(SEASON_STYLES).map(([season, style]) => (
+            <span
+              key={season}
+              className="inline-flex items-center gap-2 rounded-full border border-[#e4ddcf] bg-misal-cream px-3 py-1.5 text-sm font-medium text-misal-ink"
+            >
+              <span className={`h-3.5 w-3.5 rounded-full ${style.swatch}`} />
+              {season}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   )

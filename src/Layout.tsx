@@ -11,16 +11,16 @@ interface LayoutProps {
 // Mapea el nombre del color litúrgico (del frontmatter) a clases de Tailwind.
 // Si no se reconoce, se usa un gris neutro.
 const COLOR_STYLES = {
-  verde: { dot: 'bg-green-600', label: 'text-green-800' },
-  rojo: { dot: 'bg-misal-red', label: 'text-misal-red' },
-  morado: { dot: 'bg-purple-700', label: 'text-purple-800' },
-  blanco: { dot: 'bg-white border border-slate-300', label: 'text-slate-700' },
-  negro: { dot: 'bg-slate-900', label: 'text-slate-800' },
-  rosa: { dot: 'bg-pink-500', label: 'text-pink-700' },
-  azul: { dot: 'bg-blue-600', label: 'text-blue-800' },
+  verde: { dot: 'bg-liturgico-verde', label: 'text-liturgico-verde' },
+  rojo: { dot: 'bg-liturgico-rojo', label: 'text-liturgico-rojo' },
+  morado: { dot: 'bg-liturgico-morado', label: 'text-liturgico-morado' },
+  blanco: { dot: 'bg-liturgico-blanco border border-slate-300', label: 'text-slate-700' },
+  negro: { dot: 'bg-liturgico-negro', label: 'text-slate-800' },
+  rosa: { dot: 'bg-liturgico-rosa', label: 'text-liturgico-rosa' },
+  azul: { dot: 'bg-liturgico-azul', label: 'text-liturgico-azul' },
 }
 
-const DEFAULT_COLOR_STYLE = { dot: 'bg-green-600', label: 'text-green-800' }
+const DEFAULT_COLOR_STYLE = { dot: 'bg-liturgico-verde', label: 'text-liturgico-verde' }
 
 function formatDate(iso?: string): string {
   if (!iso) return ''
