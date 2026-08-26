@@ -24,7 +24,11 @@ const DEFAULT_COLOR_STYLE = { dot: 'bg-green-600', label: 'text-green-800' }
 
 function formatDate(iso?: string): string {
   if (!iso) return ''
-  const date = new Date(iso)
+  // Parseamos la fecha como local (sin UTC) para evitar que la zona horaria
+  // desplace el día (ej. "2026-09-01" no debe retroceder al 31 de agosto).
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  const date = new Date(y, m - 1, d)
   if (Number.isNaN(date.getTime())) return iso
   return new Intl.DateTimeFormat('es', {
     day: 'numeric',
