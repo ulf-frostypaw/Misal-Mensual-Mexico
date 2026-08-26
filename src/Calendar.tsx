@@ -111,8 +111,12 @@ function liturgicalSeason(date: Date): string {
 
   // Adviento: 4 domingos antes de Navidad hasta el 24 de diciembre.
   const christmas = new Date(y, 11, 25)
+  // El 4º domingo de Adviento es el domingo anterior a Navidad; el Adviento
+  // comienza 21 días antes. Si Navidad cae en domingo, el domingo previo es 7
+  // días antes (por eso el caso especial con getDay() === 0).
   const adventStart = new Date(christmas)
-  adventStart.setDate(adventStart.getDate() - 21 - ((adventStart.getDay() + 6) % 7))
+  const adventOffset = christmas.getDay() === 0 ? 28 : 21 + christmas.getDay()
+  adventStart.setDate(adventStart.getDate() - adventOffset)
   if (date >= adventStart && date <= new Date(y, 11, 24)) return 'Adviento'
 
   // Cuaresma: Miércoles de Ceniza (46 días antes de Pascua) hasta el sábado
