@@ -63,7 +63,7 @@ export default function Layout({ children, title, date, color }: LayoutProps) {
           {formattedDate && <p className="text-lg italic text-misal-ink/70">{formattedDate}</p>}
         </div>
       </header>
-      <main className="flex-1 w-full max-w-3xl mx-auto px-5 py-10">{children}</main>
+      <main className="flex-1 w-[95%] mx-auto px-5 py-10">{children}</main>
       <footer className="border-t border-[#e8ddcf] py-6 text-center text-xs tracking-[0.2em] uppercase text-misal-ink/60">
         <span>{import.meta.env.VITE_APP_NAME}</span>
       </footer>

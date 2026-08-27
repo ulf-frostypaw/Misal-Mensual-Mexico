@@ -10,7 +10,13 @@ const modules = import.meta.glob('./pages/misal/**/*.mdx', {
   string,
   {
     default: ComponentType
-    frontmatter?: { title?: string; date?: string; color?: string }
+    frontmatter?: {
+      title?: string
+      date?: string
+      color?: string
+      featured_saint?: string[]
+      featured_image?: string
+    }
   }
 >
 
@@ -23,6 +29,8 @@ export interface MisalEntry {
   title: string
   date: string
   color?: string
+  featured_saint?: string[]
+  featured_image?: string
   component: ComponentType
 }
 
@@ -67,6 +75,8 @@ function buildEntries(): MisalEntry[] {
       title: fm.title ?? (fallbackDate ? `Misal ${fallbackDate}` : `Misal ${year}/${monthName}/${day}`),
       date: fm.date ?? fallbackDate,
       color: fm.color,
+      featured_saint: fm.featured_saint,
+      featured_image: fm.featured_image,
       component: modules[filePath].default,
     })
   }

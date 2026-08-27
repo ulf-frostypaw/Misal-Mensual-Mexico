@@ -49,6 +49,17 @@ const SEASON_STYLES: Record<string, { bg: string; text: string; border: string; 
   Pascua: { bg: 'bg-liturgico-blanco', text: 'text-misal-ink', border: 'border-sky-300', swatch: 'bg-liturgico-blanco border-2 border-sky-300' },
 }
 
+// Colores RGB por tiempo litúrgico, para el degradado de abajo hacia arriba
+// que destaca el color litúrgico sobre la imagen.
+const SEASON_RGB: Record<string, string> = {
+  Adviento: '74, 0, 136',
+  Navidad: '255, 255, 255',
+  'Tiempo Ordinario': '1, 64, 52',
+  Cuaresma: '74, 0, 136',
+  'Triduo Pascual': '89, 2, 18',
+  Pascua: '255, 255, 255',
+}
+
 // Agrupa las entradas por año y mes (usando el número de mes de la carpeta).
 function groupByMonth(entries: MisalEntry[]): Map<string, MisalEntry[]> {
   const groups = new Map<string, MisalEntry[]>()
@@ -158,7 +169,7 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
   })
 
   return (
-    <div className="lg:grid lg:grid-cols-[16rem_1fr] lg:gap-8 items-start">
+    <div className="lg:grid lg:grid-cols-[14rem_1fr] lg:gap-6 items-start">
       {/* Índice lateral: dropdown por años de los próximos meses. Solo visible en pantallas grandes. */}
       <aside className="hidden lg:block bg-misal-cream border border-[#e4ddcf] rounded-xl p-5 lg:sticky lg:top-6">
         <h2 className="text-lg font-bold tracking-[0.1em] uppercase text-misal-red mb-4">
@@ -224,7 +235,7 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
               id={`mes-${key}`}
               className="scroll-mt-6 bg-misal-cream border border-[#e4ddcf] rounded-xl p-6"
             >
-              <h2 className="text-2xl font-bold tracking-[0.08em] uppercase text-misal-red mb-4">
+              <h2 className="mb-4 text-center text-2xl font-semibold tracking-wide text-misal-red">
                 {MONTH_NAMES[month - 1]} {year}
               </h2>
 
@@ -236,9 +247,9 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
                 ))}
               </div>
 
-              <div className="grid grid-cols-7 gap-1.5">
+              <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
                 {Array.from({ length: leadingBlanks }).map((_, i) => (
-                  <div key={`blank-${i}`} className="aspect-square" />
+                  <div key={`blank-${i}`} className="aspect-square min-h-[2.75rem] sm:min-h-[5.5rem]" />
                 ))}
                 {Array.from({ length: totalDays }).map((_, i) => {
                   const day = i + 1
@@ -248,17 +259,66 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
                   const accent = entry?.color
                     ? COLOR_DOTS[entry.color.toLowerCase()] ?? DEFAULT_DOT
                     : undefined
+                  // Imagen de fondo: usa featured_image si existe (ruta del proxy o URL),
+                  // si no usa el color sólido del tiempo litúrgico.
+                  const saints = entry?.featured_saint ?? []
+                  const featuredImage = entry?.featured_image
+                  const bgUrl = featuredImage
+                    ? featuredImage.startsWith('/') || featuredImage.startsWith('http')
+                      ? featuredImage
+                      : `/api/images/${featuredImage}`
+                    : undefined
+                  const seasonRgb = SEASON_RGB[season] ?? SEASON_RGB['Tiempo Ordinario']
                   return (
                     <button
                       key={day}
                       type="button"
                       onClick={() => entry && onNavigate(entry.url)}
                       disabled={!entry}
-                      title={season}
-                      className={`flex aspect-square flex-col items-center justify-between rounded-lg border-2 p-1 transition hover:bg-misal-red hover:text-white disabled:opacity-60 disabled:cursor-default ${seasonStyle.bg} ${seasonStyle.text} ${seasonStyle.border}`}
+                      title={saints.length ? `${saints.join(', ')} — ${season}` : season}
+                      className={`group relative isolate flex aspect-square min-h-[2.75rem] flex-col items-center overflow-hidden rounded border border-[#e4ddcf] p-0.5 transition disabled:opacity-60 disabled:cursor-default sm:min-h-[5.5rem] sm:p-1.5 ${seasonStyle.text} ${seasonStyle.border}`}
                     >
-                      <span className="flex flex-1 items-center text-lg font-semibold">{day}</span>
-                      {accent && <span className={`block h-1.5 w-full rounded ${accent}`} />}
+                      {entry && bgUrl ? (
+                        <>
+                          {/* Capa de fondo con la imagen; hace zoom al pasar el cursor.
+                              Solo visible en pantallas medianas en adelante. */}
+                          <span
+                            aria-hidden
+                            className="absolute inset-0 -z-20 hidden bg-cover bg-center transition-transform duration-500 ease-out group-hover:scale-110 sm:block"
+                            style={{ backgroundImage: `url(${bgUrl})` }}
+                          />
+                          {/* Degradado de abajo hacia arriba con el color litúrgico.
+                              Solo visible en pantallas medianas en adelante. */}
+                          <span
+                            aria-hidden
+                            className="absolute inset-0 -z-10 hidden sm:block"
+                            style={{
+                              background: `linear-gradient(to top, rgba(${seasonRgb}, 0.95) 0%, rgba(${seasonRgb}, 0.6) 40%, rgba(${seasonRgb}, 0) 100%)`,
+                            }}
+                          />
+                        </>
+                      ) : (
+                        /* Sin imagen: color sólido del tiempo litúrgico. */
+                        <span aria-hidden className={`absolute inset-0 -z-20 ${seasonStyle.bg}`} />
+                      )}
+                      <span className="text-sm font-bold drop-shadow sm:text-lg">{day}</span>
+                      {/* Badges y barra de acento anclados abajo. Los badges se ocultan en
+                          pantallas muy pequeñas para que no se sobrepongan. */}
+                      <span className="mt-auto flex w-full flex-col items-center gap-0.5">
+                        {saints.length > 0 && (
+                          <span className="hidden flex-col items-center gap-0.5 sm:flex">
+                            {saints.map((s) => (
+                              <span
+                                key={s}
+                                className="rounded bg-misal-red px-2 py-0.5 text-center text-xs font-semibold leading-tight text-white shadow-sm sm:text-sm"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        {accent && <span className={`block h-1 w-full rounded sm:h-1.5 ${accent}`} />}
+                      </span>
                     </button>
                   )
                 })}
