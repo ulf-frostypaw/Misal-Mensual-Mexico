@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Layout from './Layout'
 import Calendar from './Calendar'
 import BackToTop from './BackToTop'
+import { ReportProvider } from './ReportContext'
 import { mdxComponents } from './mdx'
 import { findMisalEntry, getMisalEntries, usePathname } from './router'
 
@@ -64,9 +65,11 @@ const App = () => {
               </button>
             </div>
             <div style={{ zoom: fontScale }}>
-              <MDXProvider components={mdxComponents}>
-                <entry.component />
-              </MDXProvider>
+              <ReportProvider filePath={entry.filePath} raw={entry.raw}>
+                <MDXProvider components={mdxComponents}>
+                  <entry.component />
+                </MDXProvider>
+              </ReportProvider>
             </div>
             <nav className="mt-8 flex items-center justify-between gap-3">
               <button

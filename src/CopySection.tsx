@@ -2,13 +2,14 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 
 interface CopySectionProps {
-  id: string
-  title: string
+  id?: string
+  title?: string
   children: ReactNode
 }
 
 // Sección destacada (una lectura, salmo o evangelio) con su título, un botón
 // para copiar el subtítulo (##) y un id con el que se enlaza de forma dinámica.
+// Si no tiene título (contenido separado por ---), se muestra solo el cuadro.
 export default function CopySection({ id, title, children }: CopySectionProps) {
   const [copied, setCopied] = useState(false)
 
@@ -29,17 +30,19 @@ export default function CopySection({ id, title, children }: CopySectionProps) {
       id={id}
       className="scroll-mt-6 bg-misal-cream border border-[#e4ddcf] rounded-xl p-7 shadow-sm"
     >
-      <div className="flex items-center justify-between gap-4 mb-5">
-        <h2 className="text-xl font-bold tracking-[0.12em] uppercase text-misal-red">{title}</h2>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#e4ddcf] bg-transparent px-4 py-1.5 text-sm font-medium text-misal-ink/70 transition hover:bg-misal-gold hover:text-white hover:border-misal-gold focus:outline-none focus:ring-2 focus:ring-misal-gold"
-          aria-label={`Copiar ${title}`}
-        >
-          {copied ? <span>✓ Copiado</span> : <span>Copiar</span>}
-        </button>
-      </div>
+      {title && (
+        <div className="flex items-center justify-between gap-4 mb-5">
+          <h2 className="text-xl font-bold tracking-[0.12em] uppercase text-misal-red">{title}</h2>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#e4ddcf] bg-transparent px-4 py-1.5 text-sm font-medium text-misal-ink/70 transition hover:bg-misal-gold hover:text-white hover:border-misal-gold focus:outline-none focus:ring-2 focus:ring-misal-gold"
+            aria-label={`Copiar ${title}`}
+          >
+            {copied ? <span>✓ Copiado</span> : <span>Copiar</span>}
+          </button>
+        </div>
+      )}
       <div className="leading-relaxed text-misal-ink">{children}</div>
     </section>
   )

@@ -20,6 +20,25 @@ const modules = import.meta.glob('./pages/misal/**/*.mdx', {
   }
 >
 
+// Contenido crudo de cada .mdx, para localizar el número de línea de cada
+// sección al generar anotaciones de corrección. El valor puede ser el string
+// directo o un objeto { default: string } según la versión de Vite.
+const rawModules = import.meta.glob('./pages/misal/**/*.mdx', {
+  eager: true,
+  query: '?raw',
+}) as Record<string, unknown>
+
+// Extrae el contenido crudo como string, soportando ambos formatos.
+function getRawContent(filePath: string): string {
+  const value = rawModules[filePath]
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object' && 'default' in value) {
+    const def = (value as { default?: unknown }).default
+    if (typeof def === 'string') return def
+  }
+  return ''
+}
+
 export interface MisalEntry {
   url: string
   year: string
@@ -28,6 +47,8 @@ export interface MisalEntry {
   day: string
   title: string
   date: string
+  filePath: string
+  raw: string
   color?: string
   featured_saint?: string[]
   featured_image?: string
@@ -77,6 +98,8 @@ function buildEntries(): MisalEntry[] {
       color: fm.color,
       featured_saint: fm.featured_saint,
       featured_image: fm.featured_image,
+      filePath: filePath.replace(/^\.\//, 'src/'),
+      raw: getRawContent(filePath),
       component: modules[filePath].default,
     })
   }

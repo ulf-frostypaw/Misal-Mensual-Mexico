@@ -42,10 +42,20 @@ export default function remarkSections() {
           children: [],
         }
         result.push(current)
+      } else if (node.type === 'thematicBreak') {
+        // Un --- separa secciones: cierra la actual; la siguiente se abre sola.
+        current = null
       } else if (current) {
         ;(current!.children as MdNode[]).push(node)
       } else {
-        result.push(node)
+        // Contenido suelto (antes del primer # o tras un ---): nueva sección sin título.
+        current = {
+          type: 'mdxJsxFlowElement',
+          name: 'Section',
+          attributes: [],
+          children: [node],
+        }
+        result.push(current)
       }
     }
 
