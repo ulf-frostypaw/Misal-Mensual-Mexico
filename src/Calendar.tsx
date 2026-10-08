@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { MisalEntry } from './router'
 
 interface CalendarProps {
@@ -153,10 +153,18 @@ function liturgicalSeason(date: Date): string {
   return 'Tiempo Ordinario'
 }
 
+// Devuelve la clave `YYYY-MM` del mes actual (hoy) si está en el índice; si no,
+// la primera disponible. Sirve para abrir y resaltar el mes en el que estamos.
+function currentMonthKey(monthKeys: string[]): string | null {
+  if (monthKeys.length === 0) return null
+  const now = new Date()
+  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return monthKeys.includes(key) ? key : monthKeys[0]
+}
+
 export default function Calendar({ entries, onNavigate }: CalendarProps) {
   const byMonth = groupByMonth(entries)
   const years = yearsOf(entries)
-  const [openYear, setOpenYear] = useState<number | null>(null)
 
   // Genera los meses desde septiembre del primer año en adelante: para el primer
   // año empieza en septiembre y los siguientes años arrancan en enero.
@@ -168,10 +176,65 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
     }
   })
 
+  // Mes de "hoy" si está en el índice (si no, el primero) y año abierto por
+  // defecto en el índice lateral.
+  const initialMonth = currentMonthKey(monthKeys)
+  const [openYear, setOpenYear] = useState<number | null>(() =>
+    initialMonth ? Number(initialMonth.split('-')[0]) : (years[0] ?? null),
+  )
+  // Mes visible actualmente según el scroll, para resaltarlo en el índice.
+  const [activeMonth, setActiveMonth] = useState<string | null>(initialMonth)
+
+  // Scroll spy: marca como "mes actual" el último mes cuya parte superior ya
+  // cruzó por debajo del header sticky.
+  useEffect(() => {
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const headerHeight = document.querySelector('header')?.getBoundingClientRect().height ?? 0
+      const offset = headerHeight + 16
+      const sections = document.querySelectorAll<HTMLElement>('[data-month-key]')
+      let current: string | null = null
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top - offset <= 0) {
+          current = section.dataset.monthKey ?? null
+        } else {
+          break
+        }
+      }
+      if (current) setActiveMonth((prev) => (prev === current ? prev : current))
+    }
+    const onScroll = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [])
+
+  // Mantén abierto en el índice el año del mes que se está viendo.
+  useEffect(() => {
+    if (!activeMonth) return
+    const year = Number(activeMonth.split('-')[0])
+    setOpenYear((prev) => (prev === year ? prev : year))
+  }, [activeMonth])
+
+  // Al entrar, coloca el scroll en el mes actual.
+  useEffect(() => {
+    if (!initialMonth) return
+    document.getElementById(`mes-${initialMonth}`)?.scrollIntoView({ block: 'start' })
+  }, [])
+
   return (
     <div className="lg:grid lg:grid-cols-[14rem_1fr] lg:gap-6 items-start">
       {/* Índice lateral: dropdown por años de los próximos meses. Solo visible en pantallas grandes. */}
-      <aside className="hidden lg:block bg-misal-cream border border-[#e4ddcf] rounded-xl p-5 lg:sticky lg:top-6">
+      <aside className="hidden lg:block bg-misal-cream border border-[#e4ddcf] rounded-xl p-5 lg:sticky lg:top-[var(--header-offset)] lg:transition-[top] lg:duration-300 lg:ease-out">
         <h2 className="text-lg font-bold tracking-[0.1em] uppercase text-misal-red mb-4">
           Índice
         </h2>
@@ -184,7 +247,9 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
                 <button
                   type="button"
                   onClick={() => setOpenYear(isOpen ? null : year)}
-                  className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-misal-ink transition hover:bg-misal-red hover:text-white"
+                  className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 transition hover:bg-misal-red hover:text-white ${
+                    activeMonth?.startsWith(`${year}-`) ? 'font-semibold text-misal-red' : 'text-misal-ink'
+                  }`}
                   aria-expanded={isOpen}
                 >
                   <span className="font-semibold">{year}</span>
@@ -200,8 +265,12 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
                         <li key={key}>
                           <a
                             href={`#mes-${key}`}
-                            onClick={() => setOpenYear(null)}
-                            className="block py-1 px-2 rounded-md text-misal-ink transition hover:bg-misal-red hover:text-white"
+                            aria-current={activeMonth === key ? 'true' : undefined}
+                            className={`block py-1 px-2 rounded-md transition ${
+                              activeMonth === key
+                                ? 'bg-misal-red font-semibold text-white'
+                                : 'text-misal-ink hover:bg-misal-red hover:text-white'
+                            }`}
                           >
                             {MONTH_NAMES[month - 1]}
                           </a>
@@ -233,7 +302,8 @@ export default function Calendar({ entries, onNavigate }: CalendarProps) {
             <section
               key={key}
               id={`mes-${key}`}
-              className="scroll-mt-6 bg-misal-cream border border-[#e4ddcf] rounded-xl p-6"
+              data-month-key={key}
+              className="scroll-mt-44 bg-misal-cream border border-[#e4ddcf] rounded-xl p-6"
             >
               <h2 className="mb-4 text-center text-2xl font-semibold tracking-wide text-misal-red">
                 {MONTH_NAMES[month - 1]} {year}

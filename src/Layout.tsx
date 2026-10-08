@@ -1,11 +1,15 @@
 import { Helmet } from 'react-helmet-async'
-import type { ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 interface LayoutProps {
   children: ReactNode
   title?: string
   date?: string
   color?: string
+  // Header sticky con auto-ocultado (se esconde al bajar y reaparece al subir).
+  // Se usa solo en el calendario; en las páginas del misal el header es normal.
+  autoHideHeader?: boolean
 }
 
 // Mapea el nombre del color litúrgico (del frontmatter) a clases de Tailwind.
@@ -38,16 +42,71 @@ function formatDate(iso?: string): string {
 }
 
 // Layout principal con estética de misal litúrgico.
-export default function Layout({ children, title, date, color }: LayoutProps) {
+export default function Layout({ children, title, date, color, autoHideHeader = false }: LayoutProps) {
   const formattedDate = formatDate(date)
   const key = color?.toLowerCase() as keyof typeof COLOR_STYLES | undefined
   const colorStyle = (key && COLOR_STYLES[key]) ?? DEFAULT_COLOR_STYLE
+
+  // Header auto-ocultable: se esconde al bajar y reaparece al subir. Cerca del
+  // inicio de la página siempre permanece visible.
+  const [hidden, setHidden] = useState(false)
+
+  // Altura real del header, para reservar el espacio del índice lateral
+  // mientras está visible (ver `--header-offset` abajo).
+  const headerRef = useRef<HTMLElement>(null)
+  const [headerHeight, setHeaderHeight] = useState(0)
+  useLayoutEffect(() => {
+    const measure = () => setHeaderHeight(headerRef.current?.offsetHeight ?? 0)
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
+
+  useEffect(() => {
+    if (!autoHideHeader) {
+      setHidden(false)
+      return
+    }
+    let lastY = window.scrollY
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const y = window.scrollY
+      if (y < 80) {
+        setHidden(false)
+      } else if (y > lastY + 4) {
+        setHidden(true)
+      } else if (y < lastY - 4) {
+        setHidden(false)
+      }
+      lastY = y
+    }
+    const onScroll = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(update)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [autoHideHeader])
+
   return (
-    <div className="min-h-screen flex flex-col bg-misal-cream text-misal-ink font-misal">
+    <div
+      className="min-h-screen flex flex-col bg-misal-cream text-misal-ink font-misal"
+      // Cuando el header está oculto, el offset baja al margen del borde para que
+      // el índice lateral se le pegue arriba.
+      style={{ '--header-offset': hidden ? '1.5rem' : `${headerHeight}px` } as CSSProperties}
+    >
       <Helmet>
         <title>{title ?? import.meta.env.VITE_APP_NAME}</title>
       </Helmet>
-      <header className="bg-gradient-to-b from-misal-cream to-[#f6efe3] border-b border-[#e4ddcf] px-6 py-10 text-center">
+      <header ref={headerRef} className={`bg-gradient-to-b from-misal-cream to-[#f6efe3] border-b border-[#e4ddcf] px-6 py-10 text-center ${
+        autoHideHeader
+          ? `sticky top-0 z-40 transition-transform duration-300 ease-out ${hidden ? '-translate-y-full' : 'translate-y-0'}`
+          : ''
+      }`}>
         <div className="flex items-center justify-center gap-2 mb-5">
           <span className="text-2xl text-misal-gold leading-none">✠</span>
           <span className="text-sm tracking-[0.35em] uppercase text-misal-gold">{import.meta.env.VITE_APP_NAME}</span>

@@ -39,7 +39,7 @@ const App = () => {
   const decreaseFont = () => setFontScale((s) => Math.max(FONT_SCALE_MIN, +(s - FONT_SCALE_STEP).toFixed(2)))
 
   return (
-    <Layout title={entry?.title ?? import.meta.env.VITE_APP_NAME} date={entry?.date ?? ''} color={entry?.color}>
+    <Layout title={entry?.title ?? import.meta.env.VITE_APP_NAME} date={entry?.date ?? ''} color={entry?.color} autoHideHeader={!entry}>
       <div key={pathname} className={fading ? 'misal-fade-out' : 'misal-fade-in'}>
         {entry ? (
           <>
